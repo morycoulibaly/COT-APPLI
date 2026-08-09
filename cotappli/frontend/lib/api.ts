@@ -50,6 +50,8 @@ export interface GroupMemberSummary {
   phone: string | null;
   joinedAt: string;
   totalPaid: number;
+  expectedAmount: number | null;
+  remainingAmount: number | null;
   status: 'a_jour' | 'en_retard';
 }
 
@@ -59,6 +61,9 @@ export interface GroupSummary {
   description: string | null;
   targetAmount: number;
   currency: string;
+  status: 'OPEN' | 'CLOSED';
+  paymentInstructions: string | null;
+  shareToken: string;
   createdAt: string;
   totalCollected: number;
   progressPercent: number;
@@ -73,4 +78,22 @@ export interface Contribution {
   paymentMethod: string | null;
   notes: string | null;
   member: { displayName: string };
+}
+
+export interface PublicGroupView {
+  title: string;
+  description: string | null;
+  organizerName: string;
+  targetAmount: number;
+  currency: string;
+  status: 'OPEN' | 'CLOSED';
+  paymentInstructions: string | null;
+  totalCollected: number;
+  progressPercent: number;
+  members: {
+    displayName: string;
+    totalPaid: number;
+    expectedAmount: number | null;
+    status: 'a_jour' | 'en_retard';
+  }[];
 }

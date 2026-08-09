@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateContributionDto } from './dto/create-contribution.dto';
 
@@ -9,9 +9,25 @@ export class ContributionsService {
   async create(ownerId: string, groupId: string, dto: CreateContributionDto) {
     await this.assertGroupOwnership(ownerId, groupId);
 
+    // Pas de clôture automatique : une cotisation peut dépasser son objectif,
+    // le groupe peut accueillir de nouveaux membres à tout moment, et rien n'oblige
+    // que tout le monde cotise. On accepte donc toujours de nouveaux versements.
+
     const member = await this.prisma.groupMember.findUnique({ where: { id: dto.memberId } });
     if (!member || member.groupId !== groupId) {
       throw new NotFoundException("Ce membre n'appartient pas à ce groupe");
+    }
+
+    // Règle demandée : la date du versement ne peut pas être antérieure à aujourd'hui.
+    // (Si vous vouliez en réalité interdire les dates FUTURES plutôt que passées,
+    // inversez simplement la comparaison ci-dessous : paymentDate > startOfToday.)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const paymentDate = new Date(dto.paymentDate);
+    if (paymentDate < startOfToday) {
+      throw new BadRequestException(
+        'La date du versement ne peut pas être antérieure à la date du jour.',
+      );
     }
 
     return this.prisma.contribution.create({
@@ -19,7 +35,7 @@ export class ContributionsService {
         groupId,
         memberId: dto.memberId,
         amount: dto.amount,
-        paymentDate: new Date(dto.paymentDate),
+        paymentDate,
         paymentMethod: dto.paymentMethod,
         notes: dto.notes,
       },

@@ -15,6 +15,7 @@ export class GroupsService {
         description: dto.description,
         targetAmount: dto.targetAmount,
         currency: dto.currency ?? 'XOF',
+        paymentInstructions: dto.paymentInstructions,
       },
     });
   }
@@ -68,21 +69,26 @@ export class GroupsService {
       0,
     );
     const target = Number(group.targetAmount);
-    const progressPercent = target > 0 ? Math.min(100, Math.round((totalCollected / target) * 100)) : 0;
+    const progressPercent = target > 0 ? Math.round((totalCollected / target) * 100) : 0;
 
     const members = group.members.map((member: any) => {
       const memberTotal = member.contributions.reduce(
         (sum: number, c: any) => sum + Number(c.amount),
         0,
       );
+      const expectedAmount = member.expectedAmount != null ? Number(member.expectedAmount) : null;
+      // Mode "cotisation fixe" : à jour seulement si le montant attendu est atteint.
+      // Mode "libre" (pas de montant défini) : à jour dès qu'un versement existe.
+      const isUpToDate = expectedAmount != null ? memberTotal >= expectedAmount : memberTotal > 0;
       return {
         id: member.id,
         displayName: member.displayName,
         phone: member.phone,
         joinedAt: member.joinedAt,
         totalPaid: memberTotal,
-        // Règle simple MVP: "à jour" si le membre a versé au moins une contribution
-        status: memberTotal > 0 ? 'a_jour' : 'en_retard',
+        expectedAmount,
+        remainingAmount: expectedAmount != null ? Math.max(0, expectedAmount - memberTotal) : null,
+        status: isUpToDate ? 'a_jour' : 'en_retard',
       };
     });
 
@@ -92,6 +98,9 @@ export class GroupsService {
       description: group.description,
       targetAmount: target,
       currency: group.currency,
+      status: group.status,
+      paymentInstructions: group.paymentInstructions,
+      shareToken: group.shareToken,
       createdAt: group.createdAt,
       totalCollected,
       progressPercent,

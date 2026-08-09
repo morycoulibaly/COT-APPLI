@@ -12,6 +12,8 @@ CREATE TABLE users (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TYPE group_status AS ENUM ('OPEN', 'CLOSED');
+
 CREATE TABLE groups (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -19,16 +21,20 @@ CREATE TABLE groups (
   description   TEXT,
   target_amount NUMERIC(14,2) NOT NULL,
   currency      VARCHAR(8) NOT NULL DEFAULT 'XOF',
+  status        group_status NOT NULL DEFAULT 'OPEN',
+  payment_instructions TEXT,
+  share_token   UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_groups_owner_id ON groups(owner_id);
 
 CREATE TABLE group_members (
-  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  group_id     UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
-  display_name VARCHAR(255) NOT NULL,
-  phone        VARCHAR(32),
-  joined_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id       UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  display_name   VARCHAR(255) NOT NULL,
+  phone          VARCHAR(32),
+  expected_amount NUMERIC(14,2),
+  joined_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_group_members_group_id ON group_members(group_id);
 

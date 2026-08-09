@@ -16,4 +16,9 @@ export class CreateGroupDto {
   @IsOptional()
   @IsIn(['XOF', 'EUR', 'USD'])
   currency?: string;
+
+  // Affiché sur la page publique : comment verser sa part (ex: numéro Mobile Money)
+  @IsOptional()
+  @IsString()
+  paymentInstructions?: string;
 }

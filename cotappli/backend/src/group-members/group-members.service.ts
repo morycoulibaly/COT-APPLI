@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMemberDto } from './dto/create-member.dto';
+import { UpdateMemberDto } from './dto/update-member.dto';
 
 @Injectable()
 export class GroupMembersService {
@@ -9,7 +10,26 @@ export class GroupMembersService {
   async create(ownerId: string, groupId: string, dto: CreateMemberDto) {
     await this.assertGroupOwnership(ownerId, groupId);
     return this.prisma.groupMember.create({
-      data: { groupId, displayName: dto.displayName, phone: dto.phone },
+      data: {
+        groupId,
+        displayName: dto.displayName,
+        phone: dto.phone,
+        expectedAmount: dto.expectedAmount,
+      },
+    });
+  }
+
+  async update(ownerId: string, groupId: string, memberId: string, dto: UpdateMemberDto) {
+    await this.assertGroupOwnership(ownerId, groupId);
+    const member = await this.prisma.groupMember.findUnique({ where: { id: memberId } });
+    if (!member || member.groupId !== groupId) throw new NotFoundException('Membre introuvable');
+    return this.prisma.groupMember.update({
+      where: { id: memberId },
+      data: {
+        displayName: dto.displayName,
+        phone: dto.phone,
+        expectedAmount: dto.expectedAmount,
+      },
     });
   }
 

@@ -21,14 +21,24 @@ model User {
   @@map("users")
 }
 
+enum GroupStatus {
+  OPEN
+  CLOSED
+}
+
 model Group {
-  id            String   @id @default(uuid())
-  ownerId       String   @map("owner_id")
+  id            String      @id @default(uuid())
+  ownerId       String      @map("owner_id")
   title         String
   description   String?
-  targetAmount  Decimal  @map("target_amount") @db.Decimal(14, 2)
-  currency      String   @default("XOF")
-  createdAt     DateTime @default(now()) @map("created_at")
+  targetAmount  Decimal     @map("target_amount") @db.Decimal(14, 2)
+  currency      String      @default("XOF")
+  status        GroupStatus @default(OPEN)
+  // Instructions affichées sur la page publique (ex: numéro Mobile Money de l'admin)
+  paymentInstructions String? @map("payment_instructions")
+  // Jeton opaque utilisé dans le lien public /c/:shareToken — ne jamais utiliser l'id interne
+  shareToken    String      @unique @default(uuid()) @map("share_token")
+  createdAt     DateTime    @default(now()) @map("created_at")
 
   owner   User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   members GroupMember[]
@@ -42,6 +52,9 @@ model GroupMember {
   groupId     String   @map("group_id")
   displayName String   @map("display_name")
   phone       String?
+  // Rempli uniquement en mode "cotisation fixe" : somme exacte que ce membre doit verser.
+  // Laissé vide en mode "libre" : le statut "à jour" se base alors sur l'existence d'au moins un versement.
+  expectedAmount Decimal? @map("expected_amount") @db.Decimal(14, 2)
   joinedAt    DateTime @default(now()) @map("joined_at")
 
   group         Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)

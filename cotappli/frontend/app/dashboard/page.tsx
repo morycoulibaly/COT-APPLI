@@ -19,15 +19,13 @@ export default function DashboardPage() {
     if (!authLoading && !user) router.replace('/login');
   }, [authLoading, user, router]);
 
-  // CORRECTION : Attendre la fin du chargement initial (!authLoading) et valider user
   useEffect(() => {
-    if (!authLoading && user) {
-      api
-        .get<GroupSummary[]>('/groups')
-        .then(setGroups)
-        .catch((err) => setError(err instanceof ApiError ? err.message : 'Erreur de chargement'));
-    }
-  }, [user, authLoading]); // Ajout de authLoading dans les dépendances
+    if (!user) return;
+    api
+      .get<GroupSummary[]>('/groups')
+      .then(setGroups)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Erreur de chargement'));
+  }, [user]);
 
   if (authLoading || !user) return null;
 
@@ -111,6 +109,7 @@ function CreateGroupModal({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
+  const [paymentInstructions, setPaymentInstructions] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -123,6 +122,7 @@ function CreateGroupModal({
         title,
         description: description || undefined,
         targetAmount: Number(targetAmount),
+        paymentInstructions: paymentInstructions || undefined,
       });
       onCreated({ ...created, members: [], totalCollected: 0, progressPercent: 0 });
     } catch (err) {
@@ -170,6 +170,22 @@ function CreateGroupModal({
               onChange={(e) => setTargetAmount(e.target.value)}
               placeholder="500000"
             />
+          </div>
+          <div>
+            <label className="label" htmlFor="paymentInstructions">
+              Instructions de paiement (optionnel)
+            </label>
+            <textarea
+              id="paymentInstructions"
+              className="input-field"
+              rows={2}
+              value={paymentInstructions}
+              onChange={(e) => setPaymentInstructions(e.target.value)}
+              placeholder="Ex : Envoyez vos cotisations par Mobile Money au 07 XX XX XX XX"
+            />
+            <p className="text-xs text-ink/50 mt-1">
+              Affiché sur la page publique partagée avec les participants non-inscrits.
+            </p>
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}

@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { GroupsModule } from './groups/groups.module';
 import { GroupMembersModule } from './group-members/group-members.module';
 import { ContributionsModule } from './contributions/contributions.module';
+import { PublicModule } from './public/public.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { ContributionsModule } from './contributions/contributions.module';
     GroupsModule,
     GroupMembersModule,
     ContributionsModule,
+    PublicModule,
   ],
 })
 export class AppModule {}

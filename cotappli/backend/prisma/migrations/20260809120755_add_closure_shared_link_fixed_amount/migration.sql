@@ -1,3 +1,6 @@
+-- CreateEnum
+CREATE TYPE "GroupStatus" AS ENUM ('OPEN', 'CLOSED');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
@@ -17,6 +20,9 @@ CREATE TABLE "groups" (
     "description" TEXT,
     "target_amount" DECIMAL(14,2) NOT NULL,
     "currency" TEXT NOT NULL DEFAULT 'XOF',
+    "status" "GroupStatus" NOT NULL DEFAULT 'OPEN',
+    "payment_instructions" TEXT,
+    "share_token" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "groups_pkey" PRIMARY KEY ("id")
@@ -28,6 +34,7 @@ CREATE TABLE "group_members" (
     "group_id" TEXT NOT NULL,
     "display_name" TEXT NOT NULL,
     "phone" TEXT,
+    "expected_amount" DECIMAL(14,2),
     "joined_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "group_members_pkey" PRIMARY KEY ("id")
@@ -48,6 +55,9 @@ CREATE TABLE "contributions" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "groups_share_token_key" ON "groups"("share_token");
 
 -- CreateIndex
 CREATE INDEX "groups_owner_id_idx" ON "groups"("owner_id");

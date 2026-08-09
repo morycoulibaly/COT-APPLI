@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Sécurité : on ne fait confiance qu'aux champs déclarés dans les DTO
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
