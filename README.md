@@ -1,2 +1,2 @@
 # COT-APPLI
-Application de gestion transparente de dotisations 
+Application de gestion transparente de cotisations 
