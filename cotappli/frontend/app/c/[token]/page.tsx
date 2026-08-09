@@ -5,7 +5,7 @@ import { Wordmark } from '@/components/Wordmark';
 import { ProgressBar, formatAmount } from '@/components/ProgressBar';
 import type { PublicGroupView } from '@/lib/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
 
 async function fetchPublicGroup(token: string): Promise<PublicGroupView | null> {
   const res = await fetch(`${API_URL}/public/${token}`, { cache: 'no-store' });
@@ -19,12 +19,12 @@ export async function generateMetadata({
   params: { token: string };
 }): Promise<Metadata> {
   const group = await fetchPublicGroup(params.token);
-  if (!group) return { title: "Cotisation introuvable — COOP'APPLI" };
+  if (!group) return { title: "Cotisation introuvable — COT'APPLI" };
 
   const description = `Organisé par ${group.organizerName} · ${formatAmount(group.totalCollected, group.currency)} / ${formatAmount(group.targetAmount, group.currency)} collectés (${group.progressPercent}%)`;
 
   return {
-    title: `${group.title} — COOP'APPLI`,
+    title: `${group.title} — COT'APPLI`,
     description,
     openGraph: {
       title: group.title,
