@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { Wordmark } from '@/components/Wordmark';
+import { GoogleButton } from '@/components/GoogleButton';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -35,6 +36,14 @@ export default function LoginPage() {
         <div className="card p-6">
           <h1 className="font-display font-bold text-xl text-ink mb-1">Connexion</h1>
           <p className="text-sm text-ink/60 mb-6">Accédez à vos caisses communes</p>
+
+          <GoogleButton />
+
+          <div className="flex items-center gap-3 my-5">
+            <div className="h-px bg-line flex-1" />
+            <span className="text-xs text-ink/40">ou</span>
+            <div className="h-px bg-line flex-1" />
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

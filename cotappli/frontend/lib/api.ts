@@ -7,7 +7,7 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('coopappli_token') : null;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('cotappli_token') : null;
 
   const res = await fetch(`${API_URL}${path}`, {
     ...options,

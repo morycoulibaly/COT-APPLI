@@ -134,11 +134,6 @@ export default function GroupDetailPage() {
                     >
                       {member.status === "a_jour" ? "À jour" : "En retard"}
                     </span>
-                    <div className="flex items-center justify-between gap-2">
-                      <h1 className="font-display font-bold text-2xl text-ink">
-                        {group.title}
-                      </h1>
-                    </div>
                   </div>
                 </div>
               ))}

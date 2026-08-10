@@ -15,6 +15,7 @@ interface AuthContextValue {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName: string) => Promise<void>;
+  exchangeGoogleCode: (code: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -26,14 +27,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const stored = localStorage.getItem('coopappli_user');
+    const stored = localStorage.getItem('cotappli_user');
     if (stored) setUser(JSON.parse(stored));
     setIsLoading(false);
   }, []);
 
   function persistSession(res: AuthResponse) {
-    localStorage.setItem('coopappli_token', res.accessToken);
-    localStorage.setItem('coopappli_user', JSON.stringify(res.user));
+    localStorage.setItem('cotappli_token', res.accessToken);
+    localStorage.setItem('cotappli_user', JSON.stringify(res.user));
     setUser(res.user);
   }
 
@@ -49,15 +50,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push('/dashboard');
   }
 
+  // Utilisé par la page /auth/callback après une connexion Google réussie.
+  // Le code reçu dans l'URL n'est PAS le vrai token (voir auth.controller.ts côté backend) :
+  // il faut l'échanger contre le vrai token via cet appel, qui le reçoit dans le corps
+  // de la réponse plutôt que dans une URL.
+  async function exchangeGoogleCode(code: string) {
+    const res = await api.post<AuthResponse>('/auth/google/exchange', { code });
+    persistSession(res);
+    router.push('/dashboard');
+  }
+
   function logout() {
-    localStorage.removeItem('coopappli_token');
-    localStorage.removeItem('coopappli_user');
+    localStorage.removeItem('cotappli_token');
+    localStorage.removeItem('cotappli_user');
     setUser(null);
     router.push('/login');
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, login, register, exchangeGoogleCode, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );
