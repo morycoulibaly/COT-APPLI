@@ -7,9 +7,9 @@ const sora = Sora({ subsets: ['latin'], variable: '--font-sora', weight: ['600',
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: "COT'APPLI — Gestion de cotisations et caisses communes",
-  description:
-    "Centralisez et suivez en temps réel les cotisations de votre association, tontine ou collecte d'événement.",
+  metadataBase: new URL('https://cot-appli.vercel.app'), // votre vraie URL Vercel
+  title: "COT'APPLI",
+  description: "Centralisez et suivez en temps réel les cotisations de votre association, tontine ou collecte d'événement.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
