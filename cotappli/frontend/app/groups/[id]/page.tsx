@@ -46,6 +46,15 @@ export default function GroupDetailPage() {
     <div className="min-h-screen">
       <AppHeader />
       <main className="max-w-5xl mx-auto px-4 py-8">
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="btn-secondary text-sm"
+          >
+            Retour
+          </button>
+        </div>
         {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
         {!group ? (
           <p className="text-ink/50">Chargement…</p>
