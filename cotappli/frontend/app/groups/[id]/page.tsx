@@ -179,7 +179,7 @@ function ShareModal({ group, onClose }: { group: GroupSummary; onClose: () => vo
   const publicUrl =
     typeof window !== 'undefined' ? `${window.location.origin}/c/${group.shareToken}` : '';
 
-  const whatsappMessage = `Salut à tous ! J'ai créé l'espace de suivi pour la cotisation "${group.title}" sur COOP'APPLI. Vous pouvez suivre l'avancement des versements et l'objectif en temps réel ici : ${publicUrl}`;
+  const whatsappMessage = `Salut à tous ! J'ai créé l'espace de suivi pour la cotisation "${group.title}" sur COT'APPLI. Vous pouvez suivre l'avancement des versements et l'objectif en temps réel ici : ${publicUrl}`;
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
 
   async function handleCopy() {
