@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { Wordmark } from '@/components/Wordmark';
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get('email') ?? '';
   const { verifyEmail, resendCode } = useAuth();
@@ -41,59 +41,67 @@ export default function VerifyEmailPage() {
   }
 
   return (
+    <div className="card p-6">
+      <h1 className="font-display font-bold text-xl text-ink mb-1">Vérifiez votre email</h1>
+      <p className="text-sm text-ink/60 mb-6">
+        Un code à 6 chiffres a été envoyé à <span className="font-medium text-ink">{email}</span>.
+        Il expire dans 15 minutes.
+      </p>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="label" htmlFor="code">Code de vérification</label>
+          <input
+            id="code"
+            required
+            inputMode="numeric"
+            maxLength={6}
+            className="input-field text-center text-2xl tracking-[0.4em] font-semibold"
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            placeholder="••••••"
+            autoFocus
+          />
+        </div>
+
+        {error && (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+            {error}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={isSubmitting || code.length !== 6}
+          className="btn-primary w-full"
+        >
+          {isSubmitting ? 'Vérification…' : 'Vérifier'}
+        </button>
+      </form>
+
+      <button
+        onClick={handleResend}
+        disabled={resendState !== 'idle'}
+        className="text-sm text-teal-600 font-medium hover:underline mt-4 disabled:opacity-50 disabled:no-underline"
+      >
+        {resendState === 'sending' && 'Envoi…'}
+        {resendState === 'sent' && 'Code renvoyé !'}
+        {resendState === 'idle' && "Je n'ai rien reçu, renvoyer le code"}
+      </button>
+    </div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex justify-center">
           <Wordmark />
         </div>
-        <div className="card p-6">
-          <h1 className="font-display font-bold text-xl text-ink mb-1">Vérifiez votre email</h1>
-          <p className="text-sm text-ink/60 mb-6">
-            Un code à 6 chiffres a été envoyé à <span className="font-medium text-ink">{email}</span>.
-            Il expire dans 15 minutes.
-          </p>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="label" htmlFor="code">Code de vérification</label>
-              <input
-                id="code"
-                required
-                inputMode="numeric"
-                maxLength={6}
-                className="input-field text-center text-2xl tracking-[0.4em] font-semibold"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="••••••"
-                autoFocus
-              />
-            </div>
-
-            {error && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={isSubmitting || code.length !== 6}
-              className="btn-primary w-full"
-            >
-              {isSubmitting ? 'Vérification…' : 'Vérifier'}
-            </button>
-          </form>
-
-          <button
-            onClick={handleResend}
-            disabled={resendState !== 'idle'}
-            className="text-sm text-teal-600 font-medium hover:underline mt-4 disabled:opacity-50 disabled:no-underline"
-          >
-            {resendState === 'sending' && 'Envoi…'}
-            {resendState === 'sent' && 'Code renvoyé !'}
-            {resendState === 'idle' && "Je n'ai rien reçu, renvoyer le code"}
-          </button>
-        </div>
+        <Suspense fallback={<div className="card p-6 text-center text-sm text-ink/60">Chargement…</div>}>
+          <VerifyEmailContent />
+        </Suspense>
       </div>
     </div>
   );
