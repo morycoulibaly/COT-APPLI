@@ -1,7 +1,11 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 export class ApiError extends Error {
-  constructor(message: string, public status: number) {
+  constructor(
+    message: string,
+    public status: number,
+    public code?: string,
+  ) {
     super(message);
   }
 }
@@ -21,7 +25,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({ message: 'Une erreur est survenue' }));
     const message = Array.isArray(body.message) ? body.message.join(', ') : body.message;
-    throw new ApiError(message ?? 'Une erreur est survenue', res.status);
+    throw new ApiError(message ?? 'Une erreur est survenue', res.status, body.code);
   }
 
   if (res.status === 204) return undefined as T;

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api, AuthResponse } from './api';
+import { api, ApiError, AuthResponse } from './api';
 
 interface AuthUser {
   id: string;
@@ -15,6 +15,8 @@ interface AuthContextValue {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName: string) => Promise<void>;
+  verifyEmail: (email: string, code: string) => Promise<void>;
+  resendCode: (email: string) => Promise<void>;
   exchangeGoogleCode: (code: string) => Promise<void>;
   logout: () => void;
 }
@@ -39,21 +41,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function login(email: string, password: string) {
-    const res = await api.post<AuthResponse>('/auth/login', { email, password });
+    try {
+      const res = await api.post<AuthResponse>('/auth/login', { email, password });
+      persistSession(res);
+      router.push('/dashboard');
+    } catch (err) {
+      // Email pas encore vérifié : on redirige directement vers l'écran de code
+      // plutôt que d'afficher une simple erreur sur la page de connexion.
+      if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        return;
+      }
+      throw err;
+    }
+  }
+
+  // L'inscription ne connecte plus directement : elle crée le compte (non-vérifié)
+  // et envoie un code par email. La connexion réelle se fait après verifyEmail().
+  async function register(email: string, password: string, fullName: string) {
+    await api.post<{ email: string }>('/auth/register', { email, password, fullName });
+    router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+  }
+
+  async function verifyEmail(email: string, code: string) {
+    const res = await api.post<AuthResponse>('/auth/verify-email', { email, code });
     persistSession(res);
     router.push('/dashboard');
   }
 
-  async function register(email: string, password: string, fullName: string) {
-    const res = await api.post<AuthResponse>('/auth/register', { email, password, fullName });
-    persistSession(res);
-    router.push('/dashboard');
+  async function resendCode(email: string) {
+    await api.post('/auth/resend-code', { email });
   }
 
   // Utilisé par la page /auth/callback après une connexion Google réussie.
-  // Le code reçu dans l'URL n'est PAS le vrai token (voir auth.controller.ts côté backend) :
-  // il faut l'échanger contre le vrai token via cet appel, qui le reçoit dans le corps
-  // de la réponse plutôt que dans une URL.
   async function exchangeGoogleCode(code: string) {
     const res = await api.post<AuthResponse>('/auth/google/exchange', { code });
     persistSession(res);
@@ -69,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, login, register, exchangeGoogleCode, logout }}
+      value={{ user, isLoading, login, register, verifyEmail, resendCode, exchangeGoogleCode, logout }}
     >
       {children}
     </AuthContext.Provider>

@@ -1,3 +1,6 @@
+// COOP'APPLI — Schéma de base de données PostgreSQL (Prisma)
+// Correspond au modèle défini section 3.2 du cahier des charges
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,6 +17,11 @@ model User {
   // Identifiant unique Google — présent uniquement si le compte est lié à Google
   googleId     String?  @unique @map("google_id")
   fullName     String   @map("full_name")
+  // Un compte Google est vérifié automatiquement (Google a déjà validé l'email).
+  // Un compte mot de passe reste false jusqu'à saisie du code reçu par email.
+  emailVerified Boolean @default(false) @map("email_verified")
+  verificationCode String? @map("verification_code")
+  verificationCodeExpiresAt DateTime? @map("verification_code_expires_at")
   createdAt    DateTime @default(now()) @map("created_at")
 
   groups Group[]
