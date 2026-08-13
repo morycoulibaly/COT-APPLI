@@ -2,12 +2,10 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
-  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { createHash } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -21,8 +19,6 @@ const CODE_TTL_MINUTES = 15;
 
 @Injectable()
 export class AuthService {
-  private readonly logger = new Logger(AuthService.name);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -37,8 +33,6 @@ export class AuthService {
       throw new ConflictException('Un compte existe déjà avec cet email');
     }
 
-    await this.assertPasswordNotPwned(dto.password);
-
     const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
     const user = await this.prisma.user.create({
       data: {
@@ -51,34 +45,6 @@ export class AuthService {
     await this.generateAndSendCode(user.id, user.email);
 
     return { email: user.email };
-  }
-
-  // Vérifie le mot de passe contre la base "Have I Been Pwned" via le modèle
-  // k-anonymity : seuls les 5 premiers caractères du hash SHA-1 sont envoyés,
-  // jamais le mot de passe ni son empreinte complète. Si l'API tierce est
-  // indisponible, on n'empêche pas l'inscription (indisponibilité tierce
-  // ≠ mot de passe compromis).
-  private async assertPasswordNotPwned(password: string) {
-    try {
-      const sha1 = createHash('sha1').update(password).digest('hex').toUpperCase();
-      const prefix = sha1.slice(0, 5);
-      const suffix = sha1.slice(5);
-
-      const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
-      if (!res.ok) return;
-
-      const text = await res.text();
-      const isPwned = text.split('\n').some((line) => line.split(':')[0].trim() === suffix);
-
-      if (isPwned) {
-        throw new BadRequestException(
-          'Ce mot de passe est apparu dans une fuite de données connue. Veuillez en choisir un autre.',
-        );
-      }
-    } catch (err) {
-      if (err instanceof BadRequestException) throw err;
-      // Erreur réseau vers l'API tierce : on laisse l'inscription se poursuivre.
-    }
   }
 
   async login(dto: LoginDto) {
@@ -147,15 +113,7 @@ export class AuthService {
       data: { verificationCode: code, verificationCodeExpiresAt: expiresAt },
     });
 
-    try {
-      await this.emailService.sendVerificationCode(email, code);
-    } catch (err) {
-      // On ne fait PAS échouer l'inscription pour un souci ponctuel d'envoi :
-      // le code est déjà enregistré en base, l'utilisateur peut toujours cliquer
-      // sur "renvoyer le code" depuis l'écran de vérification. Mieux vaut ça
-      // qu'une 500 après un long chargement, sans qu'il sache ce qui s'est passé.
-      this.logger.error("Échec d'envoi du code de vérification", err);
-    }
+    await this.emailService.sendVerificationCode(email, code);
   }
 
   // Connexion/inscription via Google. Règle métier :
