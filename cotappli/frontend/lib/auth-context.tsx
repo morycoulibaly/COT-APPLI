@@ -49,9 +49,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Email pas encore vérifié : on redirige directement vers l'écran de code
       // plutôt que d'afficher une simple erreur sur la page de connexion.
       if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-        return;
-      }
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      return;
+}
       throw err;
     }
   }
