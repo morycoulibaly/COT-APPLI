@@ -46,15 +46,6 @@ export default function GroupDetailPage() {
     <div className="min-h-screen">
       <AppHeader />
       <main className="max-w-5xl mx-auto px-4 py-8">
-        <div className="mb-4">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="btn-secondary text-sm"
-          >
-            Retour
-          </button>
-        </div>
         {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
         {!group ? (
           <p className="text-ink/50">Chargement…</p>
@@ -116,14 +107,12 @@ export default function GroupDetailPage() {
                     >
                       {member.status === 'a_jour' ? 'À jour' : 'En retard'}
                     </span>
-                    {group.status === 'OPEN' && (
-                      <button
-                        onClick={() => setPaymentTarget({ id: member.id, name: member.displayName })}
-                        className="text-sm font-medium text-teal-600 hover:underline"
-                      >
-                        + Versement
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setPaymentTarget({ id: member.id, name: member.displayName })}
+                      className="text-sm font-medium text-teal-600 hover:underline"
+                    >
+                      + Versement
+                    </button>
                   </div>
                 </div>
               ))}
@@ -188,8 +177,15 @@ function ShareModal({ group, onClose }: { group: GroupSummary; onClose: () => vo
   const publicUrl =
     typeof window !== 'undefined' ? `${window.location.origin}/c/${group.shareToken}` : '';
 
-  const whatsappMessage = `Salut à tous ! J'ai créé l'espace de suivi pour la cotisation "${group.title}" sur COT'APPLI. Vous pouvez suivre l'avancement des versements et l'objectif en temps réel ici : ${publicUrl}`;
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
+  const shareMessage = `Salut à tous ! J'ai créé l'espace de suivi pour la cotisation "${group.title}" sur COT'APPLI. Vous pouvez suivre l'avancement des versements et l'objectif en temps réel ici : ${publicUrl}`;
+
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
+  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(publicUrl)}&text=${encodeURIComponent(
+    `Suivez la cotisation "${group.title}" en temps réel sur COT'APPLI :`,
+  )}`;
+  // Facebook n'accepte qu'une URL (u=) : le texte pré-rempli n'est plus supporté depuis
+  // plusieurs années par leur boîte de dialogue de partage, quel que soit le paramètre utilisé.
+  const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(publicUrl)}`;
 
   async function handleCopy() {
     await navigator.clipboard.writeText(publicUrl);
@@ -213,16 +209,37 @@ function ShareModal({ group, onClose }: { group: GroupSummary; onClose: () => vo
           </button>
         </div>
 
-        <a
-          href={whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-primary w-full flex items-center justify-center"
-        >
-          Partager sur WhatsApp
-        </a>
+        <div className="grid grid-cols-3 gap-2">
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex flex-col items-center gap-1.5 border border-line rounded-lg py-3 hover:bg-sand transition-colors"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#25D366"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.38 5.07L2 22l5.07-1.35A9.94 9.94 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2Zm0 18.15c-1.6 0-3.11-.43-4.4-1.19l-.32-.19-3.28.87.88-3.2-.2-.33A8.15 8.15 0 1 1 12 20.15Zm4.52-6.13c-.25-.12-1.47-.72-1.7-.81-.23-.08-.4-.12-.56.12-.17.25-.65.81-.8.97-.15.17-.29.19-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.38-1.72-.15-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.15.16-.25.25-.42.08-.17.04-.31-.02-.44-.06-.12-.56-1.36-.77-1.86-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.31-.23.25-.87.86-.87 2.09s.9 2.42 1.02 2.59c.12.17 1.77 2.7 4.29 3.79.6.26 1.07.42 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.15-1.18-.06-.1-.23-.16-.48-.28Z"/></svg>
+            <span className="text-[11px] font-medium text-ink/70">WhatsApp</span>
+          </a>
+          <a
+            href={telegramUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex flex-col items-center gap-1.5 border border-line rounded-lg py-3 hover:bg-sand transition-colors"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#26A5E4"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm4.64 6.8-1.63 7.68c-.12.55-.45.68-.9.43l-2.5-1.84-1.2 1.16c-.14.14-.25.25-.51.25l.18-2.55 4.63-4.19c.2-.18-.05-.28-.31-.1l-5.73 3.61-2.47-.77c-.54-.17-.55-.54.11-.8l9.65-3.72c.45-.16.84.1.68.84Z"/></svg>
+            <span className="text-[11px] font-medium text-ink/70">Telegram</span>
+          </a>
+          <a
+            href={facebookUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex flex-col items-center gap-1.5 border border-line rounded-lg py-3 hover:bg-sand transition-colors"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.09 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.7 4.53-4.7 1.31 0 2.68.24 2.68.24v2.96h-1.51c-1.49 0-1.95.93-1.95 1.89v2.27h3.32l-.53 3.49h-2.79V24C19.61 23.09 24 18.1 24 12.07Z"/></svg>
+            <span className="text-[11px] font-medium text-ink/70">Facebook</span>
+          </a>
+        </div>
 
-        <button onClick={onClose} className="btn-secondary w-full mt-3">
+        <button onClick={onClose} className="btn-secondary w-full mt-4">
           Fermer
         </button>
       </div>
