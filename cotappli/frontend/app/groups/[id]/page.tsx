@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { api, ApiError, GroupSummary, Contribution } from '@/lib/api';
+import { api, ApiError, GroupSummary, Contribution, ReceiptScanResult, ReminderTone } from '@/lib/api';
 import { AppHeader } from '@/components/AppHeader';
 import { ProgressBar, formatAmount } from '@/components/ProgressBar';
 
@@ -18,6 +18,9 @@ export default function GroupDetailPage() {
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [paymentTarget, setPaymentTarget] = useState<{ id: string; name: string } | null>(null);
   const [showShare, setShowShare] = useState(false);
+  const [reminderTarget, setReminderTarget] = useState<{ id: string; name: string } | null>(null);
+  const [selectedContribution, setSelectedContribution] = useState<Contribution | null>(null);
+  const [showScanContribution, setShowScanContribution] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -46,6 +49,13 @@ export default function GroupDetailPage() {
     <div className="min-h-screen">
       <AppHeader />
       <main className="max-w-5xl mx-auto px-4 py-8">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-ink/70 hover:text-ink transition-colors"
+        >
+          Retour
+        </button>
         {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
         {!group ? (
           <p className="text-ink/50">Chargement…</p>
@@ -113,20 +123,40 @@ export default function GroupDetailPage() {
                     >
                       + Versement
                     </button>
+                    {member.status === 'en_retard' && (
+                      <button
+                        onClick={() => setReminderTarget({ id: member.id, name: member.displayName })}
+                        className="text-sm font-medium text-gold-600 hover:underline whitespace-nowrap"
+                      >
+                        Relancer
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
 
-            <h2 className="font-display font-semibold text-lg text-ink mb-3">
-              Journal des versements
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-display font-semibold text-lg text-ink">
+                Journal des versements
+              </h2>
+              <button
+                onClick={() => setShowScanContribution(true)}
+                className="btn-secondary text-sm"
+              >
+                📸 Nouveau versement par reçu
+              </button>
+            </div>
             <div className="card divide-y divide-line">
               {history?.length === 0 && (
                 <p className="p-5 text-sm text-ink/50">Aucun versement enregistré pour l&apos;instant.</p>
               )}
               {history?.map((c) => (
-                <div key={c.id} className="p-4 flex items-center justify-between">
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedContribution(c)}
+                  className="w-full p-4 flex items-center justify-between text-left hover:bg-sand/60 transition-colors"
+                >
                   <div>
                     <p className="font-medium text-ink text-sm">{c.member.displayName}</p>
                     <p className="text-xs text-ink/50">
@@ -137,7 +167,7 @@ export default function GroupDetailPage() {
                   <span className="font-semibold text-teal-600 text-sm">
                     {formatAmount(c.amount, group.currency)}
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           </>
@@ -168,6 +198,72 @@ export default function GroupDetailPage() {
       )}
 
       {showShare && group && <ShareModal group={group} onClose={() => setShowShare(false)} />}
+
+      {reminderTarget && group && (
+        <ReminderModal
+          groupId={group.id}
+          member={reminderTarget}
+          onClose={() => setReminderTarget(null)}
+        />
+      )}
+
+      {selectedContribution && group && (
+        <ContributionDetailModal
+          contribution={selectedContribution}
+          currency={group.currency}
+          onClose={() => setSelectedContribution(null)}
+        />
+      )}
+
+      {showScanContribution && group && (
+        <ScanContributionModal
+          group={group}
+          onClose={() => setShowScanContribution(false)}
+          onAdded={() => {
+            setShowScanContribution(false);
+            loadData();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ContributionDetailModal({
+  contribution,
+  currency,
+  onClose,
+}: {
+  contribution: Contribution;
+  currency: string;
+  onClose: () => void;
+}) {
+  const rows: { label: string; value: string }[] = [
+    { label: 'Membre', value: contribution.member.displayName },
+    { label: 'Montant', value: formatAmount(contribution.amount, currency) },
+    { label: 'Date', value: new Date(contribution.paymentDate).toLocaleDateString('fr-FR') },
+    { label: 'Mode de règlement', value: contribution.paymentMethod ?? '—' },
+    { label: 'Expéditeur (scan)', value: contribution.senderName ?? '—' },
+    { label: 'Référence transaction', value: contribution.transactionReference ?? '—' },
+    { label: 'Notes', value: contribution.notes ?? '—' },
+  ];
+
+  return (
+    <div className="fixed inset-0 bg-ink/40 flex items-center justify-center px-4 z-50">
+      <div className="card w-full max-w-sm p-6">
+        <h2 className="font-display font-bold text-lg text-ink mb-4">Détails du versement</h2>
+        <div className="divide-y divide-line">
+          {rows.map((row) => (
+            <div key={row.label} className="py-2.5 flex items-center justify-between gap-3">
+              <span className="text-xs text-ink/50 shrink-0">{row.label}</span>
+              <span className="text-sm text-ink font-medium text-right break-words">{row.value}</span>
+            </div>
+          ))}
+        </div>
+        <button onClick={onClose} className="btn-secondary w-full mt-5">
+          Fermer
+        </button>
+      </div>
     </div>
   );
 }
@@ -242,6 +338,392 @@ function ShareModal({ group, onClose }: { group: GroupSummary; onClose: () => vo
         <button onClick={onClose} className="btn-secondary w-full mt-4">
           Fermer
         </button>
+      </div>
+    </div>
+  );
+}
+
+function ReminderModal({
+  groupId,
+  member,
+  onClose,
+}: {
+  groupId: string;
+  member: { id: string; name: string };
+  onClose: () => void;
+}) {
+  const [tone, setTone] = useState<ReminderTone>('amical');
+  const [message, setMessage] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const tones: { value: ReminderTone; label: string }[] = [
+    { value: 'amical', label: 'Amical / Humour' },
+    { value: 'nouchi', label: 'Nouchi / Local' },
+    { value: 'formel', label: 'Formel / Association' },
+  ];
+
+  async function handleGenerate(selectedTone: ReminderTone) {
+    setTone(selectedTone);
+    setError(null);
+    setIsGenerating(true);
+    try {
+      const res = await api.post<{ message: string }>(
+        `/groups/${groupId}/members/${member.id}/ai/reminder`,
+        { tone: selectedTone },
+      );
+      setMessage(res.message);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Génération impossible');
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+  return (
+    <div className="fixed inset-0 bg-ink/40 flex items-center justify-center px-4 z-50">
+      <div className="card w-full max-w-md p-6">
+        <h2 className="font-display font-bold text-lg text-ink mb-1">Générer une relance</h2>
+        <p className="text-sm text-ink/60 mb-4">{member.name}</p>
+
+        <div className="flex gap-2 mb-4">
+          {tones.map((t) => (
+            <button
+              key={t.value}
+              onClick={() => handleGenerate(t.value)}
+              disabled={isGenerating}
+              className={`flex-1 text-xs font-medium py-2 px-2 rounded-lg border transition-colors ${
+                tone === t.value && message
+                  ? 'bg-teal-600 text-white border-teal-600'
+                  : 'border-line text-ink/70 hover:bg-sand'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {isGenerating && <p className="text-sm text-ink/50 text-center py-4">Génération en cours…</p>}
+        {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+
+        {message && !isGenerating && (
+          <textarea
+            className="input-field text-sm mb-4"
+            rows={4}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+          />
+        )}
+
+        <div className="flex gap-3">
+          <button type="button" onClick={onClose} className="btn-secondary flex-1">
+            Fermer
+          </button>
+          {message && (
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary flex-1 flex items-center justify-center"
+            >
+              Envoyer sur WhatsApp
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ScanContributionModal({
+  group,
+  onClose,
+  onAdded,
+}: {
+  group: GroupSummary;
+  onClose: () => void;
+  onAdded: () => void;
+}) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const [scanImage, setScanImage] = useState<File | null>(null);
+  const [scanText, setScanText] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [hasScanned, setHasScanned] = useState(false);
+
+  const [amount, setAmount] = useState('');
+  const [paymentDate, setPaymentDate] = useState(todayStr);
+  const [senderName, setSenderName] = useState('');
+  const [transactionReference, setTransactionReference] = useState('');
+
+  // 'existing' : le versement est rattaché à un membre déjà enregistré.
+  // 'new' : un nouveau membre sera créé automatiquement à partir du nom détecté.
+  const [memberMode, setMemberMode] = useState<'existing' | 'new'>('existing');
+  const [selectedMemberId, setSelectedMemberId] = useState('');
+  const [newMemberName, setNewMemberName] = useState('');
+  const [newMemberExpectedAmount, setNewMemberExpectedAmount] = useState('');
+
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleScan() {
+    if (!scanImage && !scanText.trim()) {
+      setScanError('Ajoutez une capture d’écran ou collez le texte du SMS.');
+      return;
+    }
+    setScanError(null);
+    setIsScanning(true);
+    try {
+      const formData = new FormData();
+      if (scanImage) formData.append('image', scanImage);
+      if (scanText.trim()) formData.append('text', scanText.trim());
+
+      const result = await api.postFormData<ReceiptScanResult>(
+        `/groups/${group.id}/ai/scan-receipt`,
+        formData,
+      );
+
+      if (result.amount != null) setAmount(String(result.amount));
+      if (result.date) setPaymentDate(result.date <= todayStr ? result.date : todayStr);
+      if (result.transactionId) setTransactionReference(result.transactionId);
+
+      if (result.senderName) {
+        setSenderName(result.senderName);
+        // On cherche une correspondance parmi les membres déjà enregistrés
+        // (comparaison insensible à la casse et aux espaces superflus).
+        const normalized = result.senderName.trim().toLowerCase();
+        const match = group.members.find((m) => m.displayName.trim().toLowerCase() === normalized);
+        if (match) {
+          setMemberMode('existing');
+          setSelectedMemberId(match.id);
+        } else {
+          setMemberMode('new');
+          setNewMemberName(result.senderName);
+        }
+      }
+
+      setHasScanned(true);
+    } catch (err) {
+      setScanError(err instanceof ApiError ? err.message : "Échec de l'analyse");
+    } finally {
+      setIsScanning(false);
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (paymentDate > todayStr) {
+      setError('La date du versement ne peut pas être dans le futur.');
+      return;
+    }
+    if (memberMode === 'existing' && !selectedMemberId) {
+      setError('Sélectionnez le membre concerné.');
+      return;
+    }
+    if (memberMode === 'new' && !newMemberName.trim()) {
+      setError('Indiquez le nom du nouveau membre.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      let memberId = selectedMemberId;
+
+      if (memberMode === 'new') {
+        const created = await api.post<{ id: string }>(`/groups/${group.id}/members`, {
+          displayName: newMemberName.trim(),
+          expectedAmount: newMemberExpectedAmount ? Number(newMemberExpectedAmount) : undefined,
+        });
+        memberId = created.id;
+      }
+
+      await api.post(`/groups/${group.id}/contributions`, {
+        memberId,
+        amount: Number(amount),
+        paymentDate: new Date(paymentDate).toISOString(),
+        paymentMethod: 'Mobile Money',
+        senderName: senderName || undefined,
+        transactionReference: transactionReference || undefined,
+      });
+
+      onAdded();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Enregistrement impossible');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-ink/40 flex items-center justify-center px-4 z-50">
+      <div className="card w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+        <h2 className="font-display font-bold text-lg text-ink mb-1">
+          Nouveau versement par reçu
+        </h2>
+        <p className="text-sm text-ink/60 mb-4">
+          Scannez un reçu Mobile Money : le membre est détecté automatiquement, ou créé s&apos;il
+          n&apos;existe pas encore.
+        </p>
+
+        <div className="border border-line rounded-lg p-4 mb-4 bg-sand/50">
+          <label className="label" htmlFor="scanImage2">Capture d’écran du reçu</label>
+          <input
+            id="scanImage2"
+            type="file"
+            accept="image/*"
+            className="text-sm mb-3 block w-full"
+            onChange={(e) => setScanImage(e.target.files?.[0] ?? null)}
+          />
+
+          <label className="label" htmlFor="scanText2">Ou collez le texte du SMS</label>
+          <textarea
+            id="scanText2"
+            rows={2}
+            className="input-field text-sm mb-3"
+            placeholder="Ex : Vous avez reçu 25000 F CFA de Fatou D. le 12/08/2026..."
+            value={scanText}
+            onChange={(e) => setScanText(e.target.value)}
+          />
+
+          {scanError && <p className="text-xs text-red-600 mb-2">{scanError}</p>}
+
+          <button
+            type="button"
+            onClick={handleScan}
+            disabled={isScanning}
+            className="btn-primary w-full text-sm"
+          >
+            {isScanning ? 'Analyse en cours…' : 'Analyser le reçu'}
+          </button>
+        </div>
+
+        {hasScanned && (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="label">Membre</label>
+              {memberMode === 'new' ? (
+                <div className="bg-gold-100/50 border border-gold-400/30 rounded-lg p-3">
+                  <p className="text-xs text-gold-600 font-medium mb-2">
+                    Nouveau membre détecté — sera créé automatiquement à l&apos;enregistrement
+                  </p>
+                  <input
+                    className="input-field text-sm"
+                    value={newMemberName}
+                    onChange={(e) => setNewMemberName(e.target.value)}
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    className="input-field text-sm mt-2"
+                    placeholder="Montant attendu (optionnel — mode cotisation fixe)"
+                    value={newMemberExpectedAmount}
+                    onChange={(e) => setNewMemberExpectedAmount(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMemberMode('existing');
+                      setSelectedMemberId('');
+                    }}
+                    className="text-xs text-teal-600 hover:underline mt-2"
+                  >
+                    Choisir un membre existant à la place
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <select
+                    className="input-field"
+                    value={selectedMemberId}
+                    onChange={(e) => setSelectedMemberId(e.target.value)}
+                  >
+                    <option value="">— Sélectionner —</option>
+                    {group.members.map((m) => (
+                      <option key={m.id} value={m.id}>{m.displayName}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMemberMode('new');
+                      setNewMemberName(senderName);
+                    }}
+                    className="text-xs text-teal-600 hover:underline mt-2"
+                  >
+                    Créer un nouveau membre à la place
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="label" htmlFor="amount2">Montant</label>
+              <input
+                id="amount2"
+                type="number"
+                min={1}
+                required
+                className="input-field"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="label" htmlFor="paymentDate2">Date</label>
+              <input
+                id="paymentDate2"
+                type="date"
+                required
+                max={todayStr}
+                className="input-field"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label" htmlFor="senderName2">Expéditeur</label>
+                <input
+                  id="senderName2"
+                  className="input-field text-sm"
+                  value={senderName}
+                  onChange={(e) => setSenderName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label" htmlFor="transactionReference2">Réf. transaction</label>
+                <input
+                  id="transactionReference2"
+                  className="input-field text-sm"
+                  value={transactionReference}
+                  onChange={(e) => setTransactionReference(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
+
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={onClose} className="btn-secondary flex-1">
+                Annuler
+              </button>
+              <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
+                {isSubmitting ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {!hasScanned && (
+          <button onClick={onClose} className="btn-secondary w-full">
+            Annuler
+          </button>
+        )}
       </div>
     </div>
   );
@@ -351,21 +833,67 @@ function AddPaymentModal({
   onClose: () => void;
   onAdded: () => void;
 }) {
-  const [amount, setAmount] = useState('');
   const todayStr = new Date().toISOString().slice(0, 10);
+  const [amount, setAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(todayStr);
-  const [paymentMethod, setPaymentMethod] = useState('Espèces');
+  const [paymentMethod, setPaymentMethod] = useState('Mobile Money');
+  const [notes, setNotes] = useState('');
+  const [senderName, setSenderName] = useState('');
+  const [transactionReference, setTransactionReference] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // --- Scan intelligent de reçu ---
+  const [showScan, setShowScan] = useState(false);
+  const [scanImage, setScanImage] = useState<File | null>(null);
+  const [scanText, setScanText] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanApplied, setScanApplied] = useState(false);
+
+  async function handleScan() {
+    if (!scanImage && !scanText.trim()) {
+      setScanError('Ajoutez une capture d’écran ou collez le texte du SMS.');
+      return;
+    }
+    setScanError(null);
+    setIsScanning(true);
+    setScanApplied(false);
+    try {
+      const formData = new FormData();
+      if (scanImage) formData.append('image', scanImage);
+      if (scanText.trim()) formData.append('text', scanText.trim());
+
+      const result = await api.postFormData<ReceiptScanResult>(
+        `/groups/${groupId}/ai/scan-receipt`,
+        formData,
+      );
+
+      if (result.amount != null) setAmount(String(result.amount));
+      if (result.date) {
+        // On ne remplit la date que si elle n'est pas dans le futur (règle du formulaire)
+        setPaymentDate(result.date <= todayStr ? result.date : todayStr);
+      }
+      setPaymentMethod('Mobile Money');
+      if (result.senderName) setSenderName(result.senderName);
+      if (result.transactionId) setTransactionReference(result.transactionId);
+
+      setScanApplied(true);
+    } catch (err) {
+      setScanError(err instanceof ApiError ? err.message : "Échec de l'analyse");
+    } finally {
+      setIsScanning(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    // Miroir de la règle backend : pas de date antérieure à aujourd'hui.
-    // (Pour bloquer les dates FUTURES à la place, inversez cette comparaison.)
-    if (paymentDate < todayStr) {
-      setError('La date du versement ne peut pas être antérieure à la date du jour.');
+    // Un versement daté dans le futur n'a pas de sens (le paiement n'a pas encore eu lieu).
+    // Le passé, en revanche, est normal — surtout avec un reçu scanné après coup.
+    if (paymentDate > todayStr) {
+      setError('La date du versement ne peut pas être dans le futur.');
       return;
     }
 
@@ -376,6 +904,9 @@ function AddPaymentModal({
         amount: Number(amount),
         paymentDate: new Date(paymentDate).toISOString(),
         paymentMethod,
+        notes: notes || undefined,
+        senderName: senderName || undefined,
+        transactionReference: transactionReference || undefined,
       });
       onAdded();
     } catch (err) {
@@ -387,9 +918,65 @@ function AddPaymentModal({
 
   return (
     <div className="fixed inset-0 bg-ink/40 flex items-center justify-center px-4 z-50">
-      <div className="card w-full max-w-md p-6">
+      <div className="card w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
         <h2 className="font-display font-bold text-lg text-ink mb-1">Enregistrer un versement</h2>
         <p className="text-sm text-ink/60 mb-4">{member.name}</p>
+
+        {!showScan ? (
+          <button
+            onClick={() => setShowScan(true)}
+            className="w-full flex items-center justify-center gap-2 border border-teal-600/30 bg-teal-50 text-teal-700 text-sm font-medium rounded-lg py-2.5 mb-4 hover:bg-teal-100 transition-colors"
+          >
+            📸 Scanner un reçu Mobile Money
+          </button>
+        ) : (
+          <div className="border border-line rounded-lg p-4 mb-4 bg-sand/50">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium text-ink">Scan intelligent</span>
+              <button
+                type="button"
+                onClick={() => setShowScan(false)}
+                className="text-xs text-ink/50 hover:text-ink"
+              >
+                Fermer
+              </button>
+            </div>
+
+            <label className="label" htmlFor="scanImage">Capture d’écran du reçu</label>
+            <input
+              id="scanImage"
+              type="file"
+              accept="image/*"
+              className="text-sm mb-3 block w-full"
+              onChange={(e) => setScanImage(e.target.files?.[0] ?? null)}
+            />
+
+            <label className="label" htmlFor="scanText">Ou collez le texte du SMS</label>
+            <textarea
+              id="scanText"
+              rows={2}
+              className="input-field text-sm mb-3"
+              placeholder="Ex : Vous avez reçu 25000 F CFA de Fatou D. le 12/08/2026..."
+              value={scanText}
+              onChange={(e) => setScanText(e.target.value)}
+            />
+
+            {scanError && <p className="text-xs text-red-600 mb-2">{scanError}</p>}
+            {scanApplied && (
+              <p className="text-xs text-teal-600 mb-2">✓ Formulaire pré-rempli, vérifiez avant d’enregistrer.</p>
+            )}
+
+            <button
+              type="button"
+              onClick={handleScan}
+              disabled={isScanning}
+              className="btn-primary w-full text-sm"
+            >
+              {isScanning ? 'Analyse en cours…' : 'Analyser'}
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label" htmlFor="amount">Montant</label>
@@ -410,7 +997,7 @@ function AddPaymentModal({
               id="paymentDate"
               type="date"
               required
-              min={todayStr}
+              max={todayStr}
               className="input-field"
               value={paymentDate}
               onChange={(e) => setPaymentDate(e.target.value)}
@@ -424,13 +1011,46 @@ function AddPaymentModal({
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
             >
+              <option>Mobile Money</option>
               <option>Espèces</option>
               <option>Virement</option>
-              <option>Mobile Money</option>
               <option>Chèque</option>
               <option>Autre</option>
             </select>
           </div>
+          <div>
+            <label className="label" htmlFor="notes">Notes (optionnel)</label>
+            <input
+              id="notes"
+              className="input-field text-sm"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Note libre..."
+            />
+          </div>
+
+          {(senderName || transactionReference) && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label" htmlFor="senderName">Expéditeur</label>
+                <input
+                  id="senderName"
+                  className="input-field text-sm"
+                  value={senderName}
+                  onChange={(e) => setSenderName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label" htmlFor="transactionReference">Réf. transaction</label>
+                <input
+                  id="transactionReference"
+                  className="input-field text-sm"
+                  value={transactionReference}
+                  onChange={(e) => setTransactionReference(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 

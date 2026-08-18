@@ -1,4 +1,5 @@
 import { IsIn, IsNumber, IsOptional, IsPositive, IsString, MinLength } from 'class-validator';
+import { SUPPORTED_CURRENCIES } from '../../common/constants/currencies';
 
 export class CreateGroupDto {
   @IsString()
@@ -14,7 +15,7 @@ export class CreateGroupDto {
   targetAmount: number;
 
   @IsOptional()
-  @IsIn(['XOF', 'EUR', 'USD'])
+  @IsIn(SUPPORTED_CURRENCIES)
   currency?: string;
 
   // Affiché sur la page publique : comment verser sa part (ex: numéro Mobile Money)

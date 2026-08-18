@@ -18,16 +18,14 @@ export class ContributionsService {
       throw new NotFoundException("Ce membre n'appartient pas à ce groupe");
     }
 
-    // Règle demandée : la date du versement ne peut pas être antérieure à aujourd'hui.
-    // (Si vous vouliez en réalité interdire les dates FUTURES plutôt que passées,
-    // inversez simplement la comparaison ci-dessous : paymentDate > startOfToday.)
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+    // Règle mise à jour : un versement daté dans le passé est normal (paiement déjà
+    // effectué, y compris via un reçu Mobile Money scanné). Ce qui n'a pas de sens,
+    // en revanche, c'est un versement daté dans le futur.
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
     const paymentDate = new Date(dto.paymentDate);
-    if (paymentDate < startOfToday) {
-      throw new BadRequestException(
-        'La date du versement ne peut pas être antérieure à la date du jour.',
-      );
+    if (paymentDate > endOfToday) {
+      throw new BadRequestException('La date du versement ne peut pas être dans le futur.');
     }
 
     return this.prisma.contribution.create({
@@ -38,6 +36,8 @@ export class ContributionsService {
         paymentDate,
         paymentMethod: dto.paymentMethod,
         notes: dto.notes,
+        senderName: dto.senderName,
+        transactionReference: dto.transactionReference,
       },
     });
   }

@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { api, ApiError, GroupSummary } from '@/lib/api';
 import { AppHeader } from '@/components/AppHeader';
 import { ProgressBar, formatAmount } from '@/components/ProgressBar';
+import { SUPPORTED_CURRENCIES, DEFAULT_CURRENCY } from '@/lib/currencies';
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -109,6 +110,7 @@ function CreateGroupModal({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
+  const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
   const [paymentInstructions, setPaymentInstructions] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -122,6 +124,7 @@ function CreateGroupModal({
         title,
         description: description || undefined,
         targetAmount: Number(targetAmount),
+        currency,
         paymentInstructions: paymentInstructions || undefined,
       });
       onCreated({ ...created, members: [], totalCollected: 0, progressPercent: 0 });
@@ -159,17 +162,31 @@ function CreateGroupModal({
             />
           </div>
           <div>
-            <label className="label" htmlFor="targetAmount">Montant cible (XOF)</label>
-            <input
-              id="targetAmount"
-              type="number"
-              min={1}
-              required
-              className="input-field"
-              value={targetAmount}
-              onChange={(e) => setTargetAmount(e.target.value)}
-              placeholder="500000"
-            />
+            <label className="label" htmlFor="targetAmount">Montant cible</label>
+            <div className="flex gap-2">
+              <input
+                id="targetAmount"
+                type="number"
+                min={1}
+                required
+                className="input-field flex-[3]"
+                value={targetAmount}
+                onChange={(e) => setTargetAmount(e.target.value)}
+                placeholder="500000"
+              />
+              <select
+                className="input-field w-28 sm:w-32 shrink-0 basis-[7rem]"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+              >
+                {SUPPORTED_CURRENCIES.map((c) => (
+                  <option key={c.value} value={c.value}>{c.value}</option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-ink/50 mt-1">
+              Seul le Franc CFA est disponible pour l&apos;instant.
+            </p>
           </div>
           <div>
             <label className="label" htmlFor="paymentInstructions">

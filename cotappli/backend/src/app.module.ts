@@ -6,6 +6,7 @@ import { GroupsModule } from './groups/groups.module';
 import { GroupMembersModule } from './group-members/group-members.module';
 import { ContributionsModule } from './contributions/contributions.module';
 import { PublicModule } from './public/public.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PublicModule } from './public/public.module';
     GroupMembersModule,
     ContributionsModule,
     PublicModule,
+    AiModule,
   ],
 })
 export class AppModule {}

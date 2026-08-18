@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
+import { DEFAULT_CURRENCY } from '../common/constants/currencies';
 
 @Injectable()
 export class GroupsService {
@@ -14,7 +15,7 @@ export class GroupsService {
         title: dto.title,
         description: dto.description,
         targetAmount: dto.targetAmount,
-        currency: dto.currency ?? 'XOF',
+        currency: dto.currency ?? DEFAULT_CURRENCY,
         paymentInstructions: dto.paymentInstructions,
       },
     });
@@ -69,6 +70,8 @@ export class GroupsService {
       0,
     );
     const target = Number(group.targetAmount);
+    // Pas de plafond à 100 : une cotisation peut dépasser son objectif (ex. 120%).
+    // La barre visuelle, elle, reste pleine au-delà de 100 (cf. ProgressBar côté frontend).
     const progressPercent = target > 0 ? Math.round((totalCollected / target) * 100) : 0;
 
     const members = group.members.map((member: any) => {

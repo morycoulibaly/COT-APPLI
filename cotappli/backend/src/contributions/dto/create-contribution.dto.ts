@@ -2,14 +2,14 @@ import { IsDateString, IsNumber, IsOptional, IsPositive, IsString } from 'class-
 
 export class CreateContributionDto {
   @IsString()
-  memberId: string;
+  memberId!: string;
 
   @IsNumber()
   @IsPositive()
-  amount: number;
+  amount!: number;
 
   @IsDateString()
-  paymentDate: string;
+  paymentDate!: string;
 
   @IsOptional()
   @IsString()
@@ -18,4 +18,13 @@ export class CreateContributionDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  // Renseignés uniquement lors d'un versement créé via le scan d'un reçu Mobile Money
+  @IsOptional()
+  @IsString()
+  senderName?: string;
+
+  @IsOptional()
+  @IsString()
+  transactionReference?: string;
 }

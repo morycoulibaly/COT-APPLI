@@ -1,4 +1,4 @@
-// COOP'APPLI — Schéma de base de données PostgreSQL (Prisma)
+// COT'APPLI — Schéma de base de données PostgreSQL (Prisma)
 // Correspond au modèle défini section 3.2 du cahier des charges
 
 generator client {
@@ -40,7 +40,7 @@ model Group {
   title         String
   description   String?
   targetAmount  Decimal     @map("target_amount") @db.Decimal(14, 2)
-  currency      String      @default("XOF")
+  currency      String      @default("CFA")
   status        GroupStatus @default(OPEN)
   // Instructions affichées sur la page publique (ex: numéro Mobile Money de l'admin)
   paymentInstructions String? @map("payment_instructions")
@@ -80,6 +80,10 @@ model Contribution {
   paymentDate   DateTime @map("payment_date")
   paymentMethod String?  @map("payment_method") // espèces, virement, mobile money (saisie manuelle)
   notes         String?
+  // Détails extraits automatiquement lors d'un scan de reçu Mobile Money (Wave/OM/MTN).
+  // Restent vides pour une saisie manuelle classique (espèces, etc.).
+  senderName            String? @map("sender_name")
+  transactionReference  String? @map("transaction_reference")
 
   member GroupMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
