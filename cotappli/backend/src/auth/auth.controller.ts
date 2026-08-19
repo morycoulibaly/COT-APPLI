@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -19,21 +20,33 @@ export class AuthController {
     private readonly config: ConfigService,
   ) {}
 
+  // 5 inscriptions par heure et par IP : suffisant pour un usage légitime,
+  // dissuasif pour la création massive de faux comptes.
+  @Throttle({ default: { limit: 5, ttl: 3_600_000 } })
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
+  // 5 tentatives par minute et par IP : laisse la place à l'erreur de frappe,
+  // rend une attaque par force brute sur le mot de passe impraticable.
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
 
+  // Le code fait 6 chiffres (1 million de combinaisons) et expire en 15 minutes.
+  // À 5 essais/minute, un attaquant ne peut tester qu'environ 75 combinaisons
+  // avant expiration — la probabilité de succès devient négligeable.
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('verify-email')
   verifyEmail(@Body() dto: VerifyEmailDto) {
     return this.authService.verifyEmail(dto);
   }
 
+  // 3 renvois par 10 minutes : empêche le spam de la boîte mail d'un tiers.
+  @Throttle({ default: { limit: 3, ttl: 600_000 } })
   @Post('resend-code')
   resendCode(@Body() dto: ResendCodeDto) {
     return this.authService.resendCode(dto);
