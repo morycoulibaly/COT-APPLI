@@ -609,7 +609,7 @@ function ScanContributionModal({
               {memberMode === 'new' ? (
                 <div className="bg-gold-100/50 border border-gold-400/30 rounded-lg p-3">
                   <p className="text-xs text-gold-600 font-medium mb-2">
-                    Nouveau membre détecté — sera créé automatiquement à l&apos;enregistrement
+                    Nouveau membre détecté, il sera créé automatiquement à l&apos;enregistrement
                   </p>
                   <input
                     className="input-field text-sm"
